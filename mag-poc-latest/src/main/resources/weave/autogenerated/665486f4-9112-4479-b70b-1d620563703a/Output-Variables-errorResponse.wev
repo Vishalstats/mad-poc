@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_665486f4_9112_4479_b70b_1d620563703a_Output_Variables_errorResponse = Any
+

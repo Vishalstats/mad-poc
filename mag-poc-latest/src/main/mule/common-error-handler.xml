@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:cloudhub="http://www.mulesoft.org/schema/mule/cloudhub" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:tracing="http://www.mulesoft.org/schema/mule/tracing" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/tracing http://www.mulesoft.org/schema/mule/tracing/current/mule-tracing.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/cloudhub http://www.mulesoft.org/schema/mule/cloudhub/current/mule-cloudhub.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd">
+
+	<vm:config name="VM_Config" doc:name="VM Config" doc:id="3b0b67e3-49e7-493e-9c37-f18a4a7b1aa2">
+		<vm:queues >
+			<vm:queue queueName="global_VMqueue" queueType="PERSISTENT" />
+		</vm:queues>
+	</vm:config>
+	<error-handler name="common-error-handlerError_Handler" doc:id="2df69135-b7e4-404c-b3f7-317ee9cd080c" >
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="4a7fff3e-0200-4d04-ba7e-f397e643d3aa" type="CONNECTIVITY">
+			<set-variable value="504" doc:name="http-status-504" doc:id="e7680b9b-bd41-4703-89fa-ff55bc5c7937" variableName="httpStatus"/>
+			<flow-ref doc:name="failure-type-segregate" doc:id="6426f078-d02f-4985-b4c8-03c0d5884a21" name="failure-type-segregate"/>
+		</on-error-propagate>
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="244efa6e-0468-4b5a-bcdf-45ad318db6f1" type="SECURITY">
+			<choice doc:name="Choice" doc:id="fe4aef77-ccf3-49d5-b87b-cde899f53dfd" >
+				<when expression='#[error.errorType.identifier=="UNAUTHORIZED"]'>
+					<set-variable value="401" doc:name="HTTP_status_401" doc:id="f39a2587-810e-48b7-aa62-020f72db513b" variableName="httpStatus"/>
+				</when>
+				<otherwise >
+					<set-variable value="403" doc:name="HTTP_status_403" doc:id="29695b6e-031a-4bd1-8d0a-04d60fb09975" variableName="httpStatus"/>
+				</otherwise>
+				
+			</choice>
+			<flow-ref doc:name="failure-type-segregate" doc:id="1c8b7f7d-3ccf-429a-ad61-a9cdf5b8a6cf" name="failure-type-segregate"/>
+		</on-error-propagate>
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="ae585111-2fe6-4674-b9fd-6570b85c0386" type="ANY">
+			<choice doc:name="Choice" doc:id="6407cb26-ea66-4c39-a67f-2e241eea6f50" >
+				<when expression='#[error.errorType.namespace=="APIKIT"]'>
+					<ee:transform doc:name="set_httpStatus" doc:id="04d02782-34db-468a-9f6f-6737dc5190de" >
+						<ee:message >
+						</ee:message>
+						<ee:variables >
+							<ee:set-variable resource="dw/commonUtils.dwl" variableName="httpStatus" />
+						</ee:variables>
+					</ee:transform>
+				</when>
+				<otherwise >
+							<set-variable value="500" doc:name="HTTP_status_500" doc:id="36ae7740-6c4a-4436-a523-f742fafff859" variableName="httpStatus"/>
+				
+</otherwise>
+			</choice>
+			<flow-ref doc:name="failure-type-segregate" doc:id="329c83c2-86e3-462f-b2f5-c7d380c0d47a" name="failure-type-segregate"/>
+		</on-error-propagate>
+	</error-handler>
+	<sub-flow name="common-technical-error-handler" doc:id="a93f36e2-b9a5-462a-9cf6-307b74784fa0" >
+		<tracing:set-logging-variable doc:name="set_error_type" doc:id="c3e8952d-203e-4f57-942b-71c139587d79" variableName="errorType" value="#[error.errorType.namespace ++ ':' ++ error.errorType.identifier]" />
+		<tracing:remove-logging-variable doc:name="remove_logging_variable" doc:id="caf3fd77-d8f5-42a6-95ee-2da79bbdb57e" variableName="errorType" />
+		<ee:transform doc:name="private-client-error-response" doc:id="2e5eee79-23eb-4092-b147-3ccbad40b2e0">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable resource="dwl/technicalError.dwl" variableName="errorResponse" />
+			</ee:variables>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="common-functional-error-handler" doc:id="f2aebcce-cf3b-42cb-8805-9e167676e02e" >
+		<tracing:set-logging-variable doc:name="set_error_type" doc:id="ec9d58fc-a9cc-451a-94b0-7194f30dfcaa" variableName="errorType" value="#[error.errorType.namespace ++ ':' ++ error.errorType.identifier]" />
+		<tracing:remove-logging-variable doc:name="remove_logging_variable" doc:id="2e8fdcea-2474-4bf0-9827-c38810f95b01" variableName="errorType" />
+		<ee:transform doc:name="private-client-error-response" doc:id="50cd8850-cc26-4dc5-a232-a12561a20cf7">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable resource="dwl/functionalError.dwl" variableName="errorResponse" />
+			
+</ee:variables>
+		</ee:transform>
+	
+</sub-flow>
+	<sub-flow name="failure-type-segregate" doc:id="b341b62b-8df5-49e1-90ce-da3e24678af7" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;error.errorType.namespace ++ ":" ++ error.errorType.identifier]' doc:name="set-typeOf-error" doc:id="703c497e-61af-49aa-be6f-a7ba43af6472" variableName="typeOfError"/>
+		
+		<choice doc:name="Choice" doc:id="f52e8927-2ec2-49ad-849d-0ce23cd4236b" >
+			<when expression="#[(Mule::p('functionalError.list') contains (vars.typeOfError))]">
+				<flow-ref doc:name="common-functional-error-handler" doc:id="7911cf04-33ad-4db3-86a5-5313bfdd6e73" name="common-functional-error-handler"/>
+			</when>
+			<otherwise >
+				<flow-ref doc:name="common-technical-error-handler" doc:id="29c3f402-041d-414a-8c54-da8362c2818f" name="common-technical-error-handler"/>
+			</otherwise>
+		</choice>
+	</sub-flow>		
+	<sub-flow name="downstream-error-handler" doc:id="c32b6d7d-6866-4b10-94ab-0fb4ed777a83" >
+			<choice doc:name="Choice" doc:id="b5e39f0a-4b54-4d2c-99f0-564b8f31233a" >
+				<when expression="#[error.errorMessage.payload !=null]">
+					<ee:transform doc:name="initial-payload" doc:id="35b93bbe-4b7f-4845-9b97-890869001643" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+error.errorMessage.payload ]]></ee:set-payload>
+						</ee:message>
+						<ee:variables />
+					</ee:transform>
+					<set-variable value='#[%dw 2.0&#10;output application/json&#10;import * from dw::core::Strings&#10;---&#10;&#10;if (error.description contains "400") "400" else &#10;if (error.description contains "401") "401" else &#10;if (error.description contains "403") "403" else &#10;if (error.description contains "404") "404" else &#10;if (error.description contains "405") "405" else &#10;if (error.description contains "406") "406" else &#10;if (error.description contains "409") "409" else&#10;if (error.description contains "412") "412" else &#10;if (error.description contains "415") "415" else &#10;if (error.description contains "421") "421" else &#10;if (error.description contains "422") "422" else &#10;if (error.description contains "424") "424" else &#10;if (error.description contains "500") "500" else&#10;if (error.description contains "501") "501" else  &#10;if (error.description contains "502") "502" else &#10;if (error.description contains "503") "503" else &#10;if (error.description contains "504") "504" else "X-Mule"]' doc:name="set-httpStatus" doc:id="fb7b30ce-1c2f-4061-8846-497b3117f99b" variableName="httpStatus"/>
+					<ee:transform doc:name="set-error" doc:id="ff7f87d4-a754-478c-8bd0-c6f1598d0afa" >
+						<ee:message >
+						</ee:message>
+						<ee:variables >
+						<ee:set-variable resource="dwl/setError.dwl" variableName="setError" />
+						
+</ee:variables>
+					</ee:transform>
+					<ee:transform doc:name="private-client-error-response" doc:id="4c221b77-aa25-4a70-bade-2adc3dd1bacf" >
+						<ee:message >
+						<ee:set-payload resource="dwl/downstreamError.dwl" />
+						
+</ee:message>
+					</ee:transform>
+				</when>
+			<otherwise>
+				<flow-ref doc:name="failure-type-segregate" doc:id="8b6d9ece-61ad-4ca5-b8b2-120bd0ca4c83" name="failure-type-segregate"/>
+
+				</otherwise>
+			
+</choice>	</sub-flow>
+	<sub-flow name="handle-common-error" doc:id="b350d0a9-5afd-40a7-bf1b-7ae04eac6e19" >
+		<logger level="INFO" doc:name="logging-error-response" doc:id="77b45a24-fb37-4c62-a2d9-27b149b29e87" message="#[vars.errorResponse]"/>
+		<vm:publish doc:name="publish-error-response" doc:id="d8b3e270-4d78-4cbf-848f-83ab5865d9d9" config-ref="VM_Config" queueName="global_VMqueue" timeout="${vm.publisher.timeout}">
+			<vm:content><![CDATA[#[vars.errorResponse]]]></vm:content>
+		</vm:publish>
+		<ee:transform doc:name="Transform Message" doc:id="2ab214ee-1fc6-4750-8d45-2f85e59d38b2" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Message published successfully..."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="error-alert" doc:id="5283ae7b-2b99-4ace-8093-f0ec76a90c5b" >
+		<!--  <ee:transform doc:name="build_notification" doc:id="f623563f-6912-4c61-9b2a-0e3b1e9d6ea8" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable resource="dwl/emailBody.dwl" variableName="emailBody" />
+			</ee:variables>
+		</ee:transform>-->
+		<async doc:name="Async" doc:id="da4525c1-20f0-47b3-b1f9-3dc11af80906" >
+			<logger level="INFO" doc:name="start-logger" doc:id="51290baf-ab1e-4c54-8d03-d81a7aa20f42" message='#["Sending Alert Notification"]' />
+		</async>
+		<email:send doc:name="send-alert" doc:id="a19886ea-01b6-4836-a63a-28a4c8208b6f" config-ref="Email_SMTP" fromAddress='#[vars.dbResponse[0]."Email_Source"]' subject='#[vars.dbResponse[0]."Email_Subject" ++ "|" ++ vars.dbResponse[0]."Transaction_Type" ++ "|" ++ vars.failureType]'>
+			<email:to-addresses >
+				<email:to-address value='#[vars.dbResponse[0]."Email_Address"]' />
+			</email:to-addresses>
+			<email:headers ><![CDATA[#[output application/java
+---
+{
+	"Key" : "Value"
+}]]]></email:headers>
+			<email:body encoding="UTF-8" contentType="text/plain">
+				<email:content ><![CDATA[#[vars.emailBody]]]></email:content>
+			</email:body>
+		</email:send>
+		<async doc:name="Async" doc:id="d5c1a69f-d4fa-4e7d-98d1-43b964f909d2" >
+			<logger level="INFO" doc:name="end-logger" doc:id="46729bff-9287-42fb-8114-33dfdd58b63d" message='#["Email Alert Sent Successfully..."]' />
+		</async>
+	</sub-flow>
+	<flow name="database-call" doc:id="3f839b60-102f-4b3a-baf9-9098b68b98f9" >
+		<vm:listener queueName="global_VMqueue" doc:name="Listener" doc:id="0d0b6321-1403-46b0-8e98-0e11b5697c5c" config-ref="VM_Config" timeout="${vm.publisher.timeout}" numberOfConsumers="${vm.listener.consumers}">
+		</vm:listener>
+		<async doc:name="Async" doc:id="a506b208-d00c-4acd-ac20-6b5d2a951dc2" >
+			<logger level="INFO" doc:name="start-logger" doc:id="1aad5b96-8d4c-4553-919f-bca7db956690" message='#["Starting DB call"]' />
+		</async>
+		<ee:transform doc:name="set-failure-type" doc:id="3a552760-7d82-4ecb-95f5-d54731448628" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="failureType" ><![CDATA[%dw 2.0
+output application/json
+---
+
+payload.errorMessage.errorType]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="set-email-body" doc:id="c3eeccd8-5b28-4ea8-9d67-dbdeff086a48" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="emailBody" ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:select doc:name="database-select-operation" doc:id="5fb1106b-2033-4a47-9e03-808a9a0322de" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT * FROM errorNotify WHERE Failure_Type = :Failure_Type AND NotificationEnabled =true]]></db:sql>
+			<db:input-parameters ><![CDATA[#["Failure_Type": vars.failureType]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="set-db-response" doc:id="b9b29ae3-d03b-4e16-80a0-afcf1f29907c" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable resource="dwl/dbResponse.dwl" variableName="dbResponse" />
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="log-db-response" doc:id="f40bce46-49d4-482f-b2a7-f1203e84bfdb" message="#[vars.dbResponse]"/>
+<choice doc:name="Choice" doc:id="af4a2ad0-e56e-4f84-a073-2ee19478201c" >
+			<when expression="#[((p('email.flow') default &quot;disabled&quot;) == &quot;enabled&quot;)]">
+				<flow-ref doc:name="error-alert" doc:id="1310a56d-d4f2-4d46-84f2-28ea21793079" name="error-alert" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="logger" doc:id="9477de18-2165-4773-9958-a053a8629ee9" message='#["Error Notifications are disabled"]'/>
+			</otherwise>
+		</choice>
+		<flow-ref doc:name="remove-variables" doc:id="83ac1bdf-e21d-43ca-a5b6-8e1819b9606d" name="remove-variables" />	
+	
+</flow>
+	<sub-flow name="remove-variables" doc:id="665486f4-9112-4479-b70b-1d620563703a" >
+		<foreach doc:name="For Each" doc:id="0dee4bd7-6bdc-492c-8e12-b4ee9c887349" collection="#[vars pluck($$)]">
+			<remove-variable doc:name="remove-all-variables" doc:id="654773e6-955e-45b7-b342-cc39af227f98" variableName="#[payload]" />
+		</foreach>
+		<async doc:name="Async" doc:id="7bf8045f-ebde-40a0-887d-741b311ea6ac" >
+			<logger level="INFO" doc:name="end-logger" doc:id="0e18baf2-be7d-41e9-863b-f46d84aa06ed" message='#["All variables removed successfully..."]' />
+		</async>
+	</sub-flow>
+</mule>

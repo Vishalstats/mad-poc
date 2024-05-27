@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_665486f4_9112_4479_b70b_1d620563703a_Output_Variables_dbResponse = Array<{|  Transaction_Type: String | Null,   Email_Address: String | Null,   Email_Subject: String | Null,   Email_CC: String | Null,   Email_BCC: String | Null,   Email_Source: String | Null|}>
+

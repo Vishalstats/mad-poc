@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation=" http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd  http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd">
+    <http:listener-config name="mag-poc-httpListenerConfig">
+        <http:listener-connection host="${http.host}" port="${http.private.port}" readTimeout="300000" />
+    </http:listener-config>
+    <apikit:config name="mag-poc-config" api="resource::fc3c9c89-6c52-4d6e-98ab-a25713ac43d8:mag-poc:1.0.11:raml:zip:mag-poc.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <db:config name="Database_Config" doc:name="Database Config" doc:id="d54749c4-b6ea-4e8b-8e93-eabf33e54de1">
+        <db:my-sql-connection host="${db.host}" port="${db.port}" user="${db.username}" password="${secure::db.password}" database="errorDetails" />
+    </db:config>
+    <secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="1567ddeb-41b9-430d-bb0f-f99e0217331b" file="properties/mag-poc-secure-${mule.env}.properties" key="${mule.vault.key}" />
+    <global-property doc:name="Global Property" doc:id="261d3bd8-929f-451c-8b47-588651cbb57a" name="mule.env" value="dev" />
+    <global-property doc:name="Global Property" doc:id="f47c99a9-99c8-4395-9f57-2ec328c3d9c5" name="mule.vault.key" value="4321dbca4321dbca" />
+    <configuration-properties doc:name="Configuration properties" doc:id="e3fb6607-a757-4afa-b993-25d877c78a1f" file="properties/mag-poc-${mule.env}.properties" />
+    <email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="24c4d577-ecc3-41c6-8b98-0af7651d8bd5">
+        <email:smtp-connection host="${smtp.host}" port="${smtp.port}" user="${smtp.user}" password="${secure::smtp.password}">
+            <email:properties>
+                <email:property key="mail.smtp.starttls.enable" value="true" />
+            </email:properties>
+        </email:smtp-connection>
+    </email:smtp-config>
+</mule>

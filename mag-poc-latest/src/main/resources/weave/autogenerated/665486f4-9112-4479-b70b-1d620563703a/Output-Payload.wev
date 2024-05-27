@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_665486f4_9112_4479_b70b_1d620563703a_Output_Payload = Array<{|  Transaction_Type?: String,   Email_Address?: String,   Email_Subject?: String,   Email_CC?: String,   Email_BCC?: String,   Email_Source?: String,   NotificationEnabled?: Boolean|}>
+
